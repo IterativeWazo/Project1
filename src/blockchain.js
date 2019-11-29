@@ -11,7 +11,6 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
-const hex2ascii = require('hex2ascii');
 
 class Blockchain {
 
@@ -37,7 +36,6 @@ class Blockchain {
     async initializeChain() {
         if( this.height === -1){
             let block = new BlockClass.Block({data: 'Genesis Block'});
-            console.log(`block initialize chain ${JSON.stringify(block)}`);
             await this._addBlock(block);
         }
     }
@@ -69,7 +67,7 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
            // block height
-           block.height = await self.getChainHeight().then(data =>{return data + 1});
+           block.height = await self.getChainHeight().then(data =>{return data});
            // UTC timestamp
            block.time = new Date().getTime().toString().slice(0,-3);
           if (self.chain.length > 0) {
@@ -78,6 +76,8 @@ class Blockchain {
           }
           // SHA256 requires a string of data
           block.hash = SHA256(JSON.stringify(block)).toString();
+        //updating height
+        self.height = block.height;
         // add block to chain    
         resolve(self.chain.push(block));
         reject("Error in adding block to the blockchain")
@@ -154,7 +154,7 @@ class Blockchain {
         return new Promise(async(resolve, reject) => {
             let block = await self.chain.filter(p => p.hash === hash)[0];       
             if(block){
-                resolve(block);
+                resolve(block.getBData());
             } else {
                 resolve(null);
             }
@@ -188,8 +188,8 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise(async(resolve, reject) => {
-         await self.chain.map(data => {
-                let decoded = JSON.parse(hex2ascii(data.body));
+         await self.chain.map(async data => {
+                let decoded = await data.getBData();
                     if(data.height != 0){
                         if (decoded.owner === address){
                            return stars.push(decoded);
@@ -210,15 +210,40 @@ class Blockchain {
     validateChain() {
         let self = this;
         let errorLog = [];
-        return new Promise(async (resolve, reject) => {
-                //validate each block
-            for(const block of self.chain){
-                if(await block.validate() != 'Valid'){         
-                    reject(`Invalid chain: ${errorLog.push(block.validate())}`)
+        return new Promise(async (resolve,reject) => {
+            let previousHash = null;
+            let currentPreviousHash = null;
+            console.log(`self ${JSON.stringify(self)}`); 
+
+            //validate each block
+            for(let i = 0; i < self.chain.length; i++){ 
+                //checking block
+                if(await self.chain[i].validate() === false){
+                    console.log(`block validate ${JSON.stringify(await self.chain[i].validate())}`); 
+                    errorLog.push(await self.chain[i]);
                 }
-            }   
-            resolve(true); 
-        });
+                
+                previousHash = self.chain[i].hash;
+
+                if(self.chain[i].height > 0){            
+                console.log(`previousHash ${JSON.stringify(previousHash)}`);  
+                    if((i+1) < self.chain.length){
+                        //checking chain
+                        currentPreviousHash = self.chain[i+1].previousBlockHash;
+                        console.log(`currentPrevoiusHash in if${JSON.stringify(currentPreviousHash)}`);    
+                            if(previousHash != currentPreviousHash){
+                            console.log(`previousHash in second if${JSON.stringify(previousHash)}`);    
+                            console.log(`currentPrevoiusHash n second if${JSON.stringify(currentPreviousHash)}`);    
+
+                            console.log(`chain validate ${previousHash != currentPreviousHash}`);    
+                            errorLog.push(self.chain[i]);
+                            console.log(`block validate ${JSON.stringify(await errorLog)}`); 
+                        }
+                    }             
+                }
+            }          
+            resolve(await errorLog); 
+        }).catch(error => {console.log(`Error in validate chain: ${JSON.stringify(error)}`)})
     }
 
 }

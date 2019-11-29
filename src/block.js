@@ -39,24 +39,24 @@ class Block {
         let self = this;
         return new Promise((resolve, reject) => {
              // Save in auxiliary variable the current block hash
-             let currentBlockHash = self.hash;                              
+             let currentBlockHash = self.hash; 
+             self.hash = null;                             
              // Recalculate the hash of the Block
               let calculateHash = SHA256(JSON.stringify(self)).toString();
               let result = false;
               if(currentBlockHash){
                  // Comparing if the hashes changed
                  result = currentBlockHash === calculateHash ? true : false;
-                 // Returning the Block is valid
+                // no tampering, returning it to the prior state
+                 self.hash = currentBlockHash;
+                 // Block is valid
                  if(result){
-                    resolve(`Valid`);
+                    resolve(true);
                  }
-                 // Returning the Block is not valid
-                reject(`Tampered block with height ${self.height}`);
               }
-               // Returning the Block is not valid
-                reject(`Error validate`);
-                        
-        });
+              // Block is not valid
+              reject(false);                
+        }).catch(error => {console.log(`Error in validate block: ${error}`)})
     }
 
     /**
@@ -70,7 +70,7 @@ class Block {
      */
     getBData() {
         let self = this;    
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
         // Getting the encoded data saved in the Block
         // Decoding the data to retrieve the JSON representation of the object
         // Parse the data to an object to be retrieve.
@@ -78,7 +78,7 @@ class Block {
         //console.log(`encoded data ${encodedData}`);
         // Resolve with the data if the object isn't the Genesis block
         if(self.height === 0){
-          reject('Genesis block here!');
+          reject(null);
         }
         resolve(encodedData);
 
