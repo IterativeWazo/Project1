@@ -213,31 +213,21 @@ class Blockchain {
         return new Promise(async (resolve,reject) => {
             let previousHash = null;
             let currentPreviousHash = null;
-            console.log(`self ${JSON.stringify(self)}`); 
-
             //validate each block
             for(let i = 0; i < self.chain.length; i++){ 
                 //checking block
                 if(await self.chain[i].validate() === false){
-                    console.log(`block validate ${JSON.stringify(await self.chain[i].validate())}`); 
-                    errorLog.push(await self.chain[i]);
+                   errorLog.push(await self.chain[i]);
                 }
-                
+                //storing previous hash by chain position
                 previousHash = self.chain[i].hash;
-
-                if(self.chain[i].height > 0){            
-                console.log(`previousHash ${JSON.stringify(previousHash)}`);  
+                //checking blocks that are not the genesis
+                if(self.chain[i].height > 0){             
                     if((i+1) < self.chain.length){
-                        //checking chain
-                        currentPreviousHash = self.chain[i+1].previousBlockHash;
-                        console.log(`currentPrevoiusHash in if${JSON.stringify(currentPreviousHash)}`);    
-                            if(previousHash != currentPreviousHash){
-                            console.log(`previousHash in second if${JSON.stringify(previousHash)}`);    
-                            console.log(`currentPrevoiusHash n second if${JSON.stringify(currentPreviousHash)}`);    
-
-                            console.log(`chain validate ${previousHash != currentPreviousHash}`);    
+                        //checking blocks in the chain
+                        currentPreviousHash = self.chain[i+1].previousBlockHash;   
+                            if(previousHash != currentPreviousHash){  
                             errorLog.push(self.chain[i]);
-                            console.log(`block validate ${JSON.stringify(await errorLog)}`); 
                         }
                     }             
                 }
